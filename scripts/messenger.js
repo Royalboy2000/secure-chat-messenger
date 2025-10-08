@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', async function() {
     const token = localStorage.getItem('access_token');
     if (!token) {
-        window.location.href = 'login.html';
+        window.location.href = '/login';
         return;
     }
 
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     let currentUser = localStorage.getItem('current_user');
     let selectedUser = null;
     let privateKey = null; // This will be a CryptoKey object
-    const DEFAULT_AVATAR = '/static/default-avatar.png';
+    const DEFAULT_AVATAR = '/static/default-avatar.png'; // A default avatar
 
     // --- Core Functions ---
     async function fetchWithAuth(url, options = {}) {
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const encryptedKeyB64 = localStorage.getItem(`encrypted_private_key_${currentUser}`);
 
         if (!recoveryCode || !encryptedKeyB64) {
-            alert("Your session has expired or is invalid. Please log in again.");
+            alert("Your session has expired or is invalid. Please log in again to continue.");
             logout();
             return false;
         }
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             return true;
         } catch (error) {
             console.error("Failed to decrypt private key:", error);
-            alert("Failed to decrypt your security key. Your recovery code may be incorrect or your stored data is corrupt. Please log out and try again.");
+            alert("Failed to decrypt your security key. Your recovery code may be incorrect or the stored data is corrupt. Please log out and try again.");
             logout();
             return false;
         } finally {
@@ -206,12 +206,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function loadMessages() {
         if (!selectedUser) return;
         try {
-            const response = await fetchWithAuth(`/api/messages?sender_id=${selectedUser.id}`); // Assuming API can filter
+            const response = await fetchWithAuth(`/api/messages?sender_id=${selectedUser.id}`);
             if (response.ok) {
                 const messages = await response.json();
                 msgsContainer.innerHTML = '';
                 for (const msg of messages) {
-                    const isOwnMessage = msg.sender_id === currentUser.id; // This needs current user's ID
+                    const isOwnMessage = msg.sender_id === currentUser.id;
                     const decryptedContent = await decryptMessage(privateKey, msg.encrypted_content);
                     displayMessage(decryptedContent, isOwnMessage ? 'sent' : 'received');
                 }
@@ -237,6 +237,5 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (keyLoaded) {
         await loadAllUsers();
         await loadContacts();
-        //setInterval(loadMessages, 5000); // Polling for messages
     }
 });

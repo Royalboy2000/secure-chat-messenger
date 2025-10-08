@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const newCodeBox = document.getElementById('new-code-box');
     const newCodeDisplay = document.getElementById('new-code-display');
     const regenError = document.getElementById('regen-error');
+    const DEFAULT_AVATAR = '/static/default-avatar.png';
 
     let currentUser = null;
 
@@ -27,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const response = await fetch(url, { ...options, headers });
         if (response.status === 401) {
             localStorage.clear();
+            sessionStorage.clear();
             window.location.href = '/login';
         }
         return response;
@@ -34,17 +36,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fetch current user data on page load
     async function loadUserData() {
-        // This assumes an endpoint to get the current user's details exists.
-        // Let's add it to the `auth` api.
         try {
             const response = await fetchWithAuth('/api/auth/me');
             if (response.ok) {
                 currentUser = await response.json();
                 usernameDisplay.textContent = currentUser.username;
                 contactIdDisplay.textContent = currentUser.contact_id;
-                if (currentUser.profile_picture_path) {
-                    pfpPreview.style.backgroundImage = `url('${currentUser.profile_picture_path}')`;
-                }
+                pfpPreview.src = currentUser.profile_picture_path || DEFAULT_AVATAR;
+                pfpPreview.onerror = () => { pfpPreview.src = DEFAULT_AVATAR; };
             } else {
                 console.error("Failed to fetch user data.");
             }
@@ -75,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (response.ok) {
                 const updatedUser = await response.json();
-                pfpPreview.style.backgroundImage = `url('${updatedUser.profile_picture_path}')`;
+                pfpPreview.src = updatedUser.profile_picture_path;
             } else {
                 const errorData = await response.json();
                 pfpError.textContent = errorData.detail || 'Upload failed.';

@@ -62,11 +62,15 @@
             <div id="convList" class="conv-list"></div>
           </div>
           <div id="contactsTab" class="tab-pane">
-            <div class="contacts-list">
-              <div class="empty-state">
-                <p>No contacts yet</p>
-                <button class="btn-small">Add Contact</button>
-              </div>
+            <div class="add-contact-form">
+              <form id="addContactForm">
+                <input id="contactIdInput" class="input" placeholder="Enter 16-digit Contact ID" required minlength="16" maxlength="16">
+                <button type="submit" class="btn-small">Add Contact</button>
+              </form>
+              <div class="error-message" id="add-contact-error"></div>
+            </div>
+            <div id="contacts-list-container" class="contacts-list">
+              <!-- Contacts will be dynamically inserted here -->
             </div>
           </div>
           <div id="callsTab" class="tab-pane">
