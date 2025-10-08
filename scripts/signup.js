@@ -5,22 +5,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const continueBtn = document.getElementById('continueBtn');
     const codeBox = document.getElementById('codeBox');
     const usernameInput = document.getElementById('username');
-    const formError = document.querySelector('.error-message');
+    const usernameError = document.getElementById('username-error');
+    const formError = document.getElementById('form-error');
 
     let generatedCode = '';
 
-    function showError(show, msg) {
-        usernameInput.classList.toggle('error', show);
-        if (msg) formError.textContent = msg;
-        formError.style.display = show ? 'block' : 'none';
+    function showError(field, message) {
+        field.textContent = message;
+        field.style.display = message ? 'block' : 'none';
     }
 
     genBtn.addEventListener('click', async () => {
         const username = usernameInput.value.trim();
 
-        showError(false);
+        // Clear previous errors
+        showError(usernameError, '');
+        showError(formError, '');
+
         if (!/^[A-Za-z0-9_.-]{3,32}$/.test(username)) {
-            showError(true, 'Username must be 3-32 characters (letters, digits, _, ., -)');
+            showError(usernameError, 'Username must be 3-32 characters (letters, digits, _, ., -)');
             return;
         }
 
@@ -51,9 +54,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 codeBox.textContent = generatedCode;
                 codeBox.dataset.code = generatedCode;
 
-                // 4. Store keys and code
+                // 4. Store the private key locally
                 localStorage.setItem(`private_key_${username}`, JSON.stringify(privateKeyJwk));
-                localStorage.setItem(`recovery_code_${username}`, generatedCode); // For convenience, though user should save it
 
                 // 5. Enable next steps
                 genBtn.textContent = 'Code Generated';
@@ -63,13 +65,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             } else {
                 const errorData = await response.json();
-                showError(true, errorData.detail || 'An unknown error occurred.');
+                showError(formError, errorData.detail || 'An unknown error occurred.');
                 genBtn.disabled = false;
                 genBtn.textContent = 'Generate Code';
             }
         } catch (error) {
             console.error('Signup error:', error);
-            showError(true, 'An unexpected error occurred during signup.');
+            showError(formError, 'An unexpected network error occurred.');
             genBtn.disabled = false;
             genBtn.textContent = 'Generate Code';
         }
@@ -90,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!generatedCode) return;
 
         const username = usernameInput.value.trim();
-        const content = `Crypsis Account Information\n=============================\n\nUsername: ${username}\nRecovery Code: ${generatedCode}\n\n=============================\nKeep this code safe and secure!`;
+        const content = `Crypsis Account Information\n=============================\n\nUsername: ${username}\n\nRecovery Code: \n${generatedCode}\n\n=============================\nKeep this code safe and secure! You will not be able to recover it.`;
 
         const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
@@ -104,13 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     continueBtn.addEventListener('click', function() {
-        // To log in, the user needs both username and the code.
-        // We'll pre-fill the username on the login page for convenience.
         localStorage.setItem('prefill_username', usernameInput.value.trim());
         window.location.href = '/login';
     });
-
-    // Initially disable buttons
-    copyBtn.disabled = true;
-    downloadBtn.disabled = true;
 });
