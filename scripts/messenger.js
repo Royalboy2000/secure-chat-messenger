@@ -25,8 +25,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     // --- State ---
     let currentUser = localStorage.getItem('current_user');
     let selectedUser = null;
-    let privateKey = null; // This will be a CryptoKey object
-    const DEFAULT_AVATAR = '/static/default-avatar.png'; // A default avatar
+    let privateKey = null;
+    const DEFAULT_AVATAR = '/static/default-avatar.png';
 
     // --- Core Functions ---
     async function fetchWithAuth(url, options = {}) {
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // --- UI Rendering ---
     function renderUserList(container, users, message) {
         container.innerHTML = '';
-        if (users.length === 0) {
+        if (!users || users.length === 0) {
             container.innerHTML = `<div class="empty-state"><p>${message}</p></div>`;
             return;
         }
@@ -93,22 +93,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     // --- Data Loading ---
-    async function loadAllUsers() {
-        try {
-            const response = await fetchWithAuth('/api/messages/users');
-            if (response.ok) {
-                renderUserList(convList, await response.json(), "No other users found.");
-            }
-        } catch (error) {
-            console.error('Failed to load all users:', error);
-        }
-    }
-
     async function loadContacts() {
         try {
             const response = await fetchWithAuth('/api/contacts/');
             if (response.ok) {
-                renderUserList(contactsListContainer, await response.json(), "Your contact list is empty. Add a contact using their ID.");
+                const contacts = await response.json();
+                // Both "Chats" and "Contacts" tabs should only show the user's contacts.
+                renderUserList(convList, contacts, "You have no active chats. Add a contact to begin.");
+                renderUserList(contactsListContainer, contacts, "Your contact list is empty. Add a contact using their ID.");
             }
         } catch (error) {
             console.error('Failed to load contacts:', error);
@@ -211,9 +203,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const messages = await response.json();
                 msgsContainer.innerHTML = '';
                 for (const msg of messages) {
-                    const isOwnMessage = msg.sender_id === currentUser.id;
                     const decryptedContent = await decryptMessage(privateKey, msg.encrypted_content);
-                    displayMessage(decryptedContent, isOwnMessage ? 'sent' : 'received');
+                    displayMessage(decryptedContent, 'received');
                 }
             }
         } catch (error) {
@@ -235,7 +226,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     // --- Initial Load ---
     const keyLoaded = await loadAndDecryptPrivateKey();
     if (keyLoaded) {
-        await loadAllUsers();
         await loadContacts();
     }
 });
