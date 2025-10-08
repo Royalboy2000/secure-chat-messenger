@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     let currentUser = localStorage.getItem('current_user');
     let selectedUser = null;
     let privateKey = null;
-    const DEFAULT_AVATAR = '/static/default-avatar.png';
+    const DEFAULT_AVATAR = '/static/default-avatar.svg';
 
     // --- Core Functions ---
     async function fetchWithAuth(url, options = {}) {
@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             userElem.className = 'conv-item';
             const avatarUrl = user.profile_picture_path || DEFAULT_AVATAR;
             userElem.innerHTML = `
-                <img class="avatar" src="${avatarUrl}" alt="${user.username}'s avatar" onerror="this.src='${DEFAULT_AVATAR}'">
+                <img class="avatar" src="${avatarUrl}" alt="${user.username}'s avatar" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';">
                 <div class="details">
                     <div class="name">${user.username}</div>
                     <div class="last-msg">Click to start a conversation</div>
@@ -98,7 +98,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             const response = await fetchWithAuth('/api/contacts/');
             if (response.ok) {
                 const contacts = await response.json();
-                // Both "Chats" and "Contacts" tabs should only show the user's contacts.
                 renderUserList(convList, contacts, "You have no active chats. Add a contact to begin.");
                 renderUserList(contactsListContainer, contacts, "Your contact list is empty. Add a contact using their ID.");
             }
@@ -154,7 +153,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         convHeader.style.display = 'flex';
         peerNameElem.textContent = user.username;
         peerAvatarElem.src = user.profile_picture_path || DEFAULT_AVATAR;
-        peerAvatarElem.onerror = () => { peerAvatarElem.src = DEFAULT_AVATAR; };
+        peerAvatarElem.onerror = function() { this.onerror=null; this.src=DEFAULT_AVATAR; };
         msgsContainer.innerHTML = '';
 
         try {

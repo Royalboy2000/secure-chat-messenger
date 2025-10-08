@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const newCodeBox = document.getElementById('new-code-box');
     const newCodeDisplay = document.getElementById('new-code-display');
     const regenError = document.getElementById('regen-error');
-    const DEFAULT_AVATAR = '/static/default-avatar.png';
+    const DEFAULT_AVATAR = '/static/default-avatar.svg';
 
     let currentUser = null;
 
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 usernameDisplay.textContent = currentUser.username;
                 contactIdDisplay.textContent = currentUser.contact_id;
                 pfpPreview.src = currentUser.profile_picture_path || DEFAULT_AVATAR;
-                pfpPreview.onerror = () => { pfpPreview.src = DEFAULT_AVATAR; };
+                pfpPreview.onerror = function() { this.onerror=null; this.src=DEFAULT_AVATAR; };
             } else {
                 console.error("Failed to fetch user data.");
             }
