@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from core.database import engine, Base
 import models.user
 import models.message
-from api import auth, messaging
+from api import auth, messaging, contacts, settings
 from core.logging import setup_logging
 from api.middleware import LoggingMiddleware
 from api.security_headers import SecurityHeadersMiddleware
@@ -25,10 +25,13 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(messaging.router, prefix="/api/messages")
+app.include_router(contacts.router, prefix="/api/contacts")
+app.include_router(settings.router, prefix="/api/settings")
 
 # Mount static files
 app.mount("/styles", StaticFiles(directory="styles"), name="styles")
 app.mount("/scripts", StaticFiles(directory="scripts"), name="scripts")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory=".")
 
@@ -47,6 +50,10 @@ async def login_page(request: Request):
 @app.get("/messenger", response_class=HTMLResponse)
 async def messenger_page(request: Request):
     return templates.TemplateResponse("messenger.html", {"request": request})
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    return templates.TemplateResponse("settings.html", {"request": request})
 
 if __name__ == "__main__":
     import uvicorn

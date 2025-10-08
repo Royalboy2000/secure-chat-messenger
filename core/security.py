@@ -20,6 +20,12 @@ def generate_recovery_code(length: int = 64) -> str:
     return "".join(secrets.choice(alphabet) for i in range(length))
 
 
+def generate_contact_id(length: int = 16) -> str:
+    """Generates a cryptographically strong random string for contact IDs."""
+    alphabet = string.ascii_uppercase + string.digits
+    return "".join(secrets.choice(alphabet) for i in range(length))
+
+
 def get_recovery_code_hash(code: str) -> str:
     """Hashes the recovery code using Argon2."""
     return pwd_context.hash(code)

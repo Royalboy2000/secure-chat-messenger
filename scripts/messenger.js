@@ -5,25 +5,30 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
 
+    // DOM Elements
     const convList = document.getElementById('convList');
-    const contactsList = document.querySelector('.contacts-list');
+    const contactsListContainer = document.getElementById('contacts-list-container');
+    const addContactForm = document.getElementById('addContactForm');
+    const contactIdInput = document.getElementById('contactIdInput');
+    const addContactError = document.getElementById('add-contact-error');
     const peerNameElem = document.getElementById('peerName');
     const peerAvatarElem = document.getElementById('peerAvatar');
     const msgsContainer = document.getElementById('msgs');
     const msgInput = document.getElementById('msgInput');
     const sendBtn = document.querySelector('.send');
     const logoutBtn = document.querySelector('.icon-btn[onclick="logout()"]');
+    const navTabs = document.querySelectorAll('.nav-tab');
+    const tabPanes = document.querySelectorAll('.tab-pane');
 
+    // State
     let currentUser = localStorage.getItem('current_user');
-    let users = [];
     let selectedUser = null;
     let privateKey = null;
+    const DEFAULT_AVATAR = '/static/default-avatar.png';
 
+    // --- Core Functions ---
     async function fetchWithAuth(url, options = {}) {
-        const headers = {
-            ...options.headers,
-            'Authorization': `Bearer ${token}`
-        };
+        const headers = { 'Authorization': `Bearer ${token}`, ...options.headers };
         const response = await fetch(url, { ...options, headers });
         if (response.status === 401) {
             localStorage.clear();
@@ -47,75 +52,124 @@ document.addEventListener('DOMContentLoaded', async function() {
         window.location.href = '/login';
     }
 
-    logoutBtn.addEventListener('click', logout);
-
-    async function loadUsers() {
-        try {
-            const response = await fetchWithAuth('/api/messages/users');
-            if (response.ok) {
-                users = await response.json();
-                renderUsers();
-            }
-        } catch (error) {
-            console.error('Failed to load users:', error);
+    // --- UI Rendering ---
+    function renderUserList(container, users, message) {
+        container.innerHTML = '';
+        if (users.length === 0) {
+            container.innerHTML = `<div class="empty-state"><p>${message}</p></div>`;
+            return;
         }
-    }
-
-    function renderUsers() {
-        convList.innerHTML = '';
-        contactsList.innerHTML = ''; // Assuming you want to populate both lists
         users.forEach(user => {
             if (user.username === currentUser) return;
-
             const userElem = document.createElement('div');
             userElem.className = 'conv-item';
+            const avatarUrl = user.profile_picture_path || DEFAULT_AVATAR;
             userElem.innerHTML = `
-                <div class="avatar">${user.username.charAt(0).toUpperCase()}</div>
+                <img class="avatar" src="${avatarUrl}" alt="${user.username}'s avatar" onerror="this.src='${DEFAULT_AVATAR}'">
                 <div class="details">
                     <div class="name">${user.username}</div>
                     <div class="last-msg">Click to start a conversation</div>
                 </div>
             `;
             userElem.addEventListener('click', () => selectUser(user));
-            convList.appendChild(userElem);
-
-            const contactElem = userElem.cloneNode(true);
-            contactElem.addEventListener('click', () => selectUser(user));
-            contactsList.appendChild(contactElem)
+            container.appendChild(userElem);
         });
     }
 
+    // --- Data Loading ---
+    async function loadAllUsers() {
+        try {
+            const response = await fetchWithAuth('/api/messages/users');
+            if (response.ok) {
+                const users = await response.json();
+                renderUserList(convList, users, "No other users found.");
+            }
+        } catch (error) {
+            console.error('Failed to load all users:', error);
+        }
+    }
+
+    async function loadContacts() {
+        try {
+            const response = await fetchWithAuth('/api/contacts/');
+            if (response.ok) {
+                const contacts = await response.json();
+                renderUserList(contactsListContainer, contacts, "Your contact list is empty.");
+            }
+        } catch (error) {
+            console.error('Failed to load contacts:', error);
+        }
+    }
+
+    // --- Event Handlers ---
+    addContactForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        addContactError.textContent = '';
+        const contactId = contactIdInput.value.trim();
+
+        if (!contactId || contactId.length !== 16) {
+            addContactError.textContent = 'Please enter a valid 16-character Contact ID.';
+            return;
+        }
+
+        try {
+            const response = await fetchWithAuth('/api/contacts/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contact_id: contactId }),
+            });
+
+            if (response.ok) {
+                contactIdInput.value = '';
+                await loadContacts(); // Refresh the contact list
+            } else {
+                const errorData = await response.json();
+                addContactError.textContent = errorData.detail || 'Failed to add contact.';
+            }
+        } catch (error) {
+            addContactError.textContent = 'An unexpected error occurred.';
+            console.error('Add contact error:', error);
+        }
+    });
+
+    logoutBtn.addEventListener('click', logout);
+
+    navTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            navTabs.forEach(t => t.classList.remove('active'));
+            tabPanes.forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(tab.dataset.tab + 'Tab').classList.add('active');
+        });
+    });
+
+    // --- Messaging Functions ---
     async function selectUser(user) {
         selectedUser = user;
         peerNameElem.textContent = user.username;
-        peerAvatarElem.textContent = user.username.charAt(0).toUpperCase();
-        msgsContainer.innerHTML = ''; // Clear previous messages
+        peerAvatarElem.src = user.profile_picture_path || DEFAULT_AVATAR;
+        peerAvatarElem.onerror = () => { peerAvatarElem.src = DEFAULT_AVATAR; };
+        msgsContainer.innerHTML = '';
 
-        // Fetch user's public key
         try {
             const response = await fetchWithAuth(`/api/messages/users/${user.username}/key`);
             if (response.ok) {
-                const publicKeyPem = await response.text();
-                selectedUser.publicKey = await importPublicKeyPem(publicKeyPem);
+                selectedUser.publicKey = await importPublicKeyPem(await response.text());
+                loadMessages();
             } else {
                 console.error("Failed to fetch public key for user:", user.username);
             }
         } catch (error) {
             console.error("Error fetching public key:", error);
         }
-
-        loadMessages();
     }
 
     async function sendMessage() {
         const messageText = msgInput.value.trim();
-        if (!messageText || !selectedUser || !selectedUser.publicKey) {
-            return;
-        }
+        if (!messageText || !selectedUser || !selectedUser.publicKey) return;
 
         try {
             const encryptedContent = await encryptMessage(selectedUser.publicKey, messageText);
-
             const response = await fetchWithAuth('/api/messages/messages', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -124,7 +178,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     encrypted_content: encryptedContent,
                 }),
             });
-
             if (response.ok) {
                 msgInput.value = '';
                 displayMessage(messageText, 'sent');
@@ -144,15 +197,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const messages = await response.json();
                 msgsContainer.innerHTML = '';
                 for (const msg of messages) {
-                    // This is a simplification. We need to know the sender.
-                    // The backend should probably provide sender info.
-                    // For now, we assume all messages are from the selected user.
                     if (msg.sender_id === selectedUser.id) {
                         try {
                             const decryptedContent = await decryptMessage(privateKey, msg.encrypted_content);
                             displayMessage(decryptedContent, 'received');
                         } catch (e) {
-                            console.error("Decryption failed:", e);
                             displayMessage("[Could not decrypt message]", 'received error');
                         }
                     }
@@ -172,16 +221,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     sendBtn.addEventListener('click', sendMessage);
-    msgInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendMessage();
-        }
-    });
+    msgInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendMessage());
 
-    // Initial load
+    // --- Initial Load ---
     await loadPrivateKey();
-    await loadUsers();
-
-    // Periodically fetch messages
+    await loadAllUsers(); // For the "Chats" tab
+    await loadContacts(); // For the "Contacts" tab
     setInterval(loadMessages, 5000);
 });

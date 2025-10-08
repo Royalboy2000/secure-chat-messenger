@@ -9,6 +9,9 @@ from core.database import get_db
 from core.security import create_access_token, verify_recovery_code
 from schemas.token import Token
 from schemas.auth import LoginRequest, SignupResponse
+from schemas.user import User
+from .dependencies import get_current_user
+from models.user import User as UserModel
 
 
 router = APIRouter()
@@ -49,3 +52,11 @@ async def login_for_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/me", response_model=User)
+def read_users_me(current_user: UserModel = Depends(get_current_user)):
+    """
+    Fetch the profile of the currently authenticated user.
+    """
+    return current_user
