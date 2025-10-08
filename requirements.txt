@@ -3,7 +3,8 @@ uvicorn[standard]
 SQLAlchemy
 cryptography
 python-jose[cryptography]
-passlib[bcrypt]
+passlib
+argon2-cffi
 python-multipart
 jinja2
 aiofiles

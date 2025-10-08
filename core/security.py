@@ -1,6 +1,5 @@
 import secrets
 import string
-import hashlib
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -9,7 +8,8 @@ from passlib.context import CryptContext
 
 from .config import get_settings, get_private_key, get_public_key
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Switch to Argon2, which is more secure and doesn't have bcrypt's length limit.
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 settings = get_settings()
 
@@ -21,22 +21,13 @@ def generate_recovery_code(length: int = 64) -> str:
 
 
 def get_recovery_code_hash(code: str) -> str:
-    """
-    Hashes the recovery code.
-    It first hashes the code with SHA-256 to bypass bcrypt's 72-byte limit
-    in a secure manner.
-    """
-    hashed_once = hashlib.sha256(code.encode('utf-8')).hexdigest()
-    return pwd_context.hash(hashed_once)
+    """Hashes the recovery code using Argon2."""
+    return pwd_context.hash(code)
 
 
 def verify_recovery_code(plain_code: str, hashed_code: str) -> bool:
-    """
-    Verifies the recovery code against the hash by performing the same
-    pre-hashing step.
-    """
-    hashed_once = hashlib.sha256(plain_code.encode('utf-8')).hexdigest()
-    return pwd_context.verify(hashed_once, hashed_code)
+    """Verifies the recovery code against the hash."""
+    return pwd_context.verify(plain_code, hashed_code)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
