@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 form.classList.add('success');
                 setTimeout(() => {
-                    window.location.href = 'messenger.html';
+                    window.location.href = '/messenger';
                 }, 400);
 
             } else {
