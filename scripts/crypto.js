@@ -118,3 +118,89 @@ async function decryptMessage(privateKey, ciphertextB64) {
     const decoder = new TextDecoder();
     return decoder.decode(decrypted);
 }
+
+// --- Symmetric Encryption for Private Key Storage ---
+
+/**
+ * Derives a key from a password/code using PBKDF2.
+ * @param {string} code The user's recovery code.
+ * @param {Uint8Array} salt A random salt.
+ * @returns {Promise<CryptoKey>} A promise that resolves to a CryptoKey for AES-GCM.
+ */
+async function deriveKeyFromCode(code, salt) {
+    const encoder = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey(
+        "raw",
+        encoder.encode(code),
+        { name: "PBKDF2" },
+        false,
+        ["deriveKey"]
+    );
+    return window.crypto.subtle.deriveKey(
+        {
+            name: "PBKDF2",
+            salt: salt,
+            iterations: 100000,
+            hash: "SHA-256",
+        },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        true,
+        ["encrypt", "decrypt"]
+    );
+}
+
+/**
+ * Encrypts the private key JWK with a key derived from the recovery code.
+ * @param {object} jwk The private key in JWK format.
+ * @param {string} code The recovery code.
+ * @returns {Promise<string>} A promise that resolves to a base64-encoded string containing salt, iv, and ciphertext.
+ */
+async function encryptPrivateKey(jwk, code) {
+    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveKeyFromCode(code, salt);
+    const encoder = new TextEncoder();
+    const dataToEncrypt = encoder.encode(JSON.stringify(jwk));
+
+    const encryptedData = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: iv },
+        key,
+        dataToEncrypt
+    );
+
+    // Combine salt, iv, and ciphertext into one buffer
+    const combined = new Uint8Array(salt.length + iv.length + encryptedData.byteLength);
+    combined.set(salt, 0);
+    combined.set(iv, salt.length);
+    combined.set(new Uint8Array(encryptedData), salt.length + iv.length);
+
+    // Return as a base64 string for easy storage
+    return window.btoa(String.fromCharCode.apply(null, combined));
+}
+
+/**
+ * Decrypts an encrypted private key using the recovery code.
+ * @param {string} encryptedKeyB64 The base64-encoded encrypted key data.
+ * @param {string} code The recovery code.
+ * @returns {Promise<object>} A promise that resolves to the private key in JWK format.
+ */
+async function decryptPrivateKey(encryptedKeyB64, code) {
+    const combined = new Uint8Array(atob(encryptedKeyB64).split('').map(c => c.charCodeAt(0)));
+
+    const salt = combined.slice(0, 16);
+    const iv = combined.slice(16, 28);
+    const ciphertext = combined.slice(28);
+
+    const key = await deriveKeyFromCode(code, salt);
+
+    const decryptedData = await window.crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: iv },
+        key,
+        ciphertext
+    );
+
+    const decoder = new TextDecoder();
+    const jwkString = decoder.decode(decryptedData);
+    return JSON.parse(jwkString);
+}

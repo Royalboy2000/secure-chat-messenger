@@ -4,103 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crypsis — Account Settings</title>
-    <link rel="stylesheet" href="/styles/messenger.css"> <!-- Re-using some styles for consistency -->
-    <style>
-        .settings-card {
-            max-width: 600px;
-            margin: 40px auto;
-            padding: 30px;
-            background: var(--bg-color-2);
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
-        }
-        .settings-card h1 {
-            margin-bottom: 20px;
-            color: var(--text-color-1);
-        }
-        .settings-section {
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .settings-section h2 {
-            font-size: 1.2em;
-            margin-bottom: 15px;
-            color: var(--text-color-2);
-        }
-        .info-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .info-item label {
-            font-weight: 600;
-            color: var(--text-color-2);
-        }
-        .info-item .value {
-            font-family: monospace;
-            background: var(--bg-color-1);
-            padding: 5px 10px;
-            border-radius: 6px;
-            user-select: all;
-        }
-        .profile-pic-container {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        .profile-pic-preview {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background-color: var(--bg-color-1);
-            background-size: cover;
-            background-position: center;
-        }
-        .danger-zone {
-            border: 1px solid var(--danger-color);
-            padding: 20px;
-            border-radius: 8px;
-            background-color: rgba(255, 82, 82, 0.05);
-        }
-        .danger-zone .btn {
-            background-color: var(--danger-color);
-        }
-        .new-code-box {
-            display: none;
-            margin-top: 15px;
-            padding: 15px;
-            background: var(--success-color-faded);
-            border: 1px solid var(--success-color);
-            border-radius: 6px;
-            word-break: break-all;
-        }
-        .back-link {
-            display: inline-block;
-            margin-bottom: 20px;
-            color: var(--text-color-3);
-        }
-    </style>
+    <link rel="stylesheet" href="/styles/settings.css">
 </head>
 <body>
-    <div class="fx-grid"></div>
-    <div class="fx-glow"></div>
-
-    <div class="settings-card">
-        <a href="/messenger" class="back-link">&larr; Back to Messenger</a>
-        <h1>Account Settings</h1>
+    <div class="settings-container">
+        <div class="settings-header">
+            <h1>Account Settings</h1>
+            <a href="/messenger" class="back-link">&larr; Back to Messenger</a>
+        </div>
 
         <!-- User Information Section -->
         <div class="settings-section">
             <h2>Your Information</h2>
-            <div class="info-item">
-                <label>Username</label>
-                <span id="username-display" class="value">Loading...</span>
+            <div class="form-group">
+                <label for="username-display">Username</label>
+                <div id="username-display" class="value-display">Loading...</div>
             </div>
-            <div class="info-item">
-                <label>Your 16-Digit Contact ID</label>
-                <span id="contact-id-display" class="value">Loading...</span>
+            <div class="form-group">
+                <label for="contact-id-display">Your 16-Digit Contact ID</label>
+                <div id="contact-id-display" class="value-display">Loading...</div>
+                <small>Share this ID to let others add you as a contact.</small>
             </div>
         </div>
 
@@ -108,25 +31,31 @@
         <div class="settings-section">
             <h2>Profile Picture</h2>
             <div class="profile-pic-container">
-                <div id="pfp-preview" class="profile-pic-preview" style="background-image: url('/static/default-avatar.png');"></div>
+                <img id="pfp-preview" class="avatar" src="/static/default-avatar.png" alt="Your Profile Picture">
                 <form id="pfp-form">
-                    <input type="file" id="pfp-input" accept="image/png, image/jpeg, image/webp" required>
+                    <div class="form-group">
+                        <label for="pfp-input">Upload New Picture</label>
+                        <input type="file" id="pfp-input" class="input" accept="image/png, image/jpeg, image/webp" required>
+                    </div>
                     <button type="submit" class="btn">Upload</button>
                 </form>
             </div>
-            <div class="error-message" id="pfp-error" style="margin-top: 10px;"></div>
+            <div class="error-message" id="pfp-error"></div>
         </div>
 
         <!-- Security Section -->
-        <div class="settings-section danger-zone">
+        <div class="settings-section">
             <h2>Security</h2>
-            <p>Regenerating your recovery code will invalidate your old one immediately. Make sure to save the new code in a secure place.</p>
-            <button id="regenerate-btn" class="btn">Regenerate New Recovery Code</button>
-            <div id="new-code-box" class="new-code-box">
-                <strong>Your new code is:</strong>
-                <div id="new-code-display"></div>
+            <div class="danger-zone">
+                <h3>Regenerate Recovery Code</h3>
+                <p>This will invalidate your old code immediately. Make sure to save the new code in a secure place, as you will not be shown it again.</p>
+                <button id="regenerate-btn" class="btn btn-danger">Regenerate New Code</button>
+                <div id="new-code-box" class="success-message" style="display: none;">
+                    <strong>Your new recovery code is:</strong>
+                    <div id="new-code-display"></div>
+                </div>
+                <div class="error-message" id="regen-error"></div>
             </div>
-            <div class="error-message" id="regen-error"></div>
         </div>
     </div>
 

@@ -9,7 +9,7 @@ from core.database import get_db
 from core.security import create_access_token, verify_recovery_code
 from schemas.token import Token
 from schemas.auth import LoginRequest, SignupResponse
-from schemas.user import User
+from schemas.user import User, UserWithDetails
 from .dependencies import get_current_user
 from models.user import User as UserModel
 
@@ -54,7 +54,7 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.get("/me", response_model=User)
+@router.get("/me", response_model=UserWithDetails)
 def read_users_me(current_user: UserModel = Depends(get_current_user)):
     """
     Fetch the profile of the currently authenticated user.

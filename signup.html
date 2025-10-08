@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Crypsis — Create Account (Recovery Code)</title>
-  <link rel="stylesheet" href="/styles/signup.css">
+  <link rel="stylesheet" href="styles/signup.css">
 </head>
 <body>
   <div class="fx-grid" aria-hidden="true"></div>
@@ -14,13 +14,13 @@
     <div class="card" role="region" aria-label="Create Account">
       <div class="brand"><div class="sig">C</div><strong>Crypsis</strong></div>
       <h1>Create Account</h1>
-      <p class="hint">Enter a username, then generate and securely store a 64-character Recovery Code. This code is the only way to access your account.</p>
+      <p class="hint">Create and securely store a 64-character Recovery Code. This code is the only way to access your account.</p>
 
-      <form class="form" id="signupForm" onsubmit="return false;">
+      <form class="form" id="signupForm">
         <div class="row">
           <label for="username">Username</label>
           <input id="username" class="input" type="text" placeholder="yourname" required minlength="3" />
-          <div class="error-message" id="username-error"></div>
+          <div class="error-message">Username must be 3-32 characters (letters, digits, _, ., -)</div>
         </div>
         <div class="row">
           <label>Recovery Code</label>
@@ -28,21 +28,24 @@
           <small class="hint">Store this code in a safe place. Anyone with this code can access your account.</small>
         </div>
 
+        <div id="seedSection" class="seed-section hidden">
+          <label>12 Seed Phrases</label>
+          <div id="seedGrid" class="seed-grid" aria-live="polite"></div>
+          <small class="hint">Keep these seed phrases safe. Download the TXT file and click "Continue to Messenger" when ready.</small>
+        </div>
+
         <div class="actions">
           <button class="btn" type="button" id="genBtn">Generate Code</button>
-          <button class="btn" type="button" id="copyBtn" disabled>Copy</button>
-          <button class="btn" type="button" id="downloadBtn" disabled>Download TXT</button>
-          <button class="btn" type="button" id="continueBtn" style="display: none;">Continue to Login</button>
-        </div>
-        <div class="error-message" id="form-error"></div>
-        <div class="bottom-link">
-          <a href="/login">Already have a code?</a>
+          <button class="btn" type="button" id="copyBtn">Copy</button>
+          <button class="btn" type="button" id="downloadBtn">Download TXT</button>
+          <button class="btn" type="button" id="continueBtn" style="display: none;">Continue to Messenger</button>
+          <a href="login.html">Already have a code?</a>
         </div>
       </form>
     </div>
   </div>
 
   <script src="/scripts/crypto.js"></script>
-  <script src="/scripts/signup.js"></script>
+  <script src="scripts/signup.js"></script>
 </body>
 </html>

@@ -1,29 +1,28 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const codeBox = document.getElementById('codeBox');
     const genBtn = document.getElementById('genBtn');
     const copyBtn = document.getElementById('copyBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const continueBtn = document.getElementById('continueBtn');
-    const codeBox = document.getElementById('codeBox');
+    const form = document.getElementById('signupForm');
     const usernameInput = document.getElementById('username');
-    const usernameError = document.getElementById('username-error');
-    const formError = document.getElementById('form-error');
+    const errorContainer = document.querySelector('.error-message');
 
     let generatedCode = '';
 
-    function showError(field, message) {
-        field.textContent = message;
-        field.style.display = message ? 'block' : 'none';
+    function showError(show, msg) {
+        if (msg) errorContainer.textContent = msg;
+        errorContainer.style.display = show ? 'block' : 'none';
+        usernameInput.classList.toggle('error', show);
     }
 
     genBtn.addEventListener('click', async () => {
         const username = usernameInput.value.trim();
 
-        // Clear previous errors
-        showError(usernameError, '');
-        showError(formError, '');
-
+        showError(false);
         if (!/^[A-Za-z0-9_.-]{3,32}$/.test(username)) {
-            showError(usernameError, 'Username must be 3-32 characters (letters, digits, _, ., -)');
+            showError(true, 'Username must be 3-32 characters (letters, digits, _, ., -)');
+            usernameInput.focus();
             return;
         }
 
@@ -50,12 +49,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await response.json();
                 generatedCode = data.recovery_code;
 
-                // 3. Display the recovery code
+                // 3. Encrypt the private key with the recovery code before storing it.
+                const encryptedKey = await encryptPrivateKey(privateKeyJwk, generatedCode);
+                localStorage.setItem(`encrypted_private_key_${username}`, encryptedKey);
+
+                // 4. Display the recovery code
                 codeBox.textContent = generatedCode;
                 codeBox.dataset.code = generatedCode;
-
-                // 4. Store the private key locally
-                localStorage.setItem(`private_key_${username}`, JSON.stringify(privateKeyJwk));
 
                 // 5. Enable next steps
                 genBtn.textContent = 'Code Generated';
@@ -65,22 +65,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
             } else {
                 const errorData = await response.json();
-                showError(formError, errorData.detail || 'An unknown error occurred.');
+                showError(true, errorData.detail || 'An unknown error occurred.');
                 genBtn.disabled = false;
                 genBtn.textContent = 'Generate Code';
             }
         } catch (error) {
             console.error('Signup error:', error);
-            showError(formError, 'An unexpected network error occurred.');
+            showError(true, 'An unexpected network error occurred.');
             genBtn.disabled = false;
             genBtn.textContent = 'Generate Code';
         }
     });
 
     copyBtn.addEventListener('click', async () => {
-        if (!generatedCode) return;
+        const code = codeBox.dataset.code || '';
+        if (!code) return;
+
         try {
-            await navigator.clipboard.writeText(generatedCode);
+            await navigator.clipboard.writeText(code);
             copyBtn.textContent = 'Copied!';
             setTimeout(() => copyBtn.textContent = 'Copy', 1500);
         } catch (err) {
@@ -106,6 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     continueBtn.addEventListener('click', function() {
+        // Pre-fill username on login page for convenience
         localStorage.setItem('prefill_username', usernameInput.value.trim());
         window.location.href = '/login';
     });

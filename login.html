@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Crypsis — Sign In</title>
-  <link rel="stylesheet" href="/styles/login.css">
+  <title>Crypsis — Sign In (Recovery Code)</title>
+  <link rel="stylesheet" href="styles/login.css">
 </head>
 <body>
   <div class="fx-grid" aria-hidden="true"></div>
@@ -14,27 +14,37 @@
     <div class="card" role="region" aria-label="Sign In">
       <div class="brand"><div class="sig">C</div><strong>Crypsis</strong></div>
       <h1>Sign In</h1>
-      <p class="hint">Use your username and 64-character Recovery Code to access your account.</p>
+      <p class="hint">Use your 64-character Recovery Code to access your account.</p>
 
       <form class="form" id="loginForm">
         <div class="row">
-          <label for="username">Username</label>
-          <input id="username" class="input" type="text" placeholder="yourname" required />
+            <label for="username">Username</label>
+            <input id="username" class="input" type="text" placeholder="yourname" required />
         </div>
         <div class="row">
-          <label for="recoveryCode">Recovery Code</label>
-          <input id="recoveryCode" class="input code" type="text" placeholder="Paste your 64-character code" required minlength="64" maxlength="64" />
+          <label for="recovery">Recovery Code</label>
+          <input id="recovery" class="input code" type="text" inputmode="text" autocomplete="off" placeholder="Paste your 64-character code" required minlength="64" maxlength="64" />
+          <div class="error-message">Code must be exactly 64 letters and digits</div>
         </div>
 
         <div class="actions">
-          <button class="btn" type="submit">Sign In</button>
-          <a href="/signup">Create a new account</a>
+          <a href="signup.html">Don't have a code?</a>
+          <button class="btn" type="submit" id="submitBtn">
+            <span class="btn-text">Sign In</span>
+            <div class="loading">
+              <div class="spinner"></div>
+              <span>Verifying…</span>
+            </div>
+          </button>
         </div>
-        <div class="error-message" id="form-error"></div>
+
+        <div class="forgot-link">
+          <a href="signup.html">Generate a new Recovery Code</a>
+        </div>
       </form>
     </div>
   </div>
 
-  <script src="/scripts/login.js"></script>
+  <script src="scripts/login.js"></script>
 </body>
 </html>

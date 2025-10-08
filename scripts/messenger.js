@@ -1,11 +1,11 @@
 document.addEventListener('DOMContentLoaded', async function() {
     const token = localStorage.getItem('access_token');
     if (!token) {
-        window.location.href = '/login';
+        window.location.href = 'login.html';
         return;
     }
 
-    // DOM Elements
+    // --- DOM Elements ---
     const convList = document.getElementById('convList');
     const contactsListContainer = document.getElementById('contacts-list-container');
     const addContactForm = document.getElementById('addContactForm');
@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     const addContactError = document.getElementById('add-contact-error');
     const peerNameElem = document.getElementById('peerName');
     const peerAvatarElem = document.getElementById('peerAvatar');
+    const convHeader = document.getElementById('conv-header');
+    const noConvoSelected = document.getElementById('no-convo-selected');
     const msgsContainer = document.getElementById('msgs');
     const msgInput = document.getElementById('msgInput');
     const sendBtn = document.querySelector('.send');
@@ -20,10 +22,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     const navTabs = document.querySelectorAll('.nav-tab');
     const tabPanes = document.querySelectorAll('.tab-pane');
 
-    // State
+    // --- State ---
     let currentUser = localStorage.getItem('current_user');
     let selectedUser = null;
-    let privateKey = null;
+    let privateKey = null; // This will be a CryptoKey object
     const DEFAULT_AVATAR = '/static/default-avatar.png';
 
     // --- Core Functions ---
@@ -31,25 +33,39 @@ document.addEventListener('DOMContentLoaded', async function() {
         const headers = { 'Authorization': `Bearer ${token}`, ...options.headers };
         const response = await fetch(url, { ...options, headers });
         if (response.status === 401) {
-            localStorage.clear();
-            window.location.href = '/login';
+            logout();
         }
         return response;
     }
 
-    async function loadPrivateKey() {
-        const privateKeyJwk = JSON.parse(localStorage.getItem(`private_key_${currentUser}`));
-        if (privateKeyJwk) {
-            privateKey = await importPrivateKeyJwk(privateKeyJwk);
-        } else {
-            console.error("Private key not found. Please log in again.");
+    async function loadAndDecryptPrivateKey() {
+        const recoveryCode = sessionStorage.getItem('temp_recovery_code');
+        const encryptedKeyB64 = localStorage.getItem(`encrypted_private_key_${currentUser}`);
+
+        if (!recoveryCode || !encryptedKeyB64) {
+            alert("Your session has expired or is invalid. Please log in again.");
             logout();
+            return false;
+        }
+
+        try {
+            const privateKeyJwk = await decryptPrivateKey(encryptedKeyB64, recoveryCode);
+            privateKey = await importPrivateKeyJwk(privateKeyJwk);
+            return true;
+        } catch (error) {
+            console.error("Failed to decrypt private key:", error);
+            alert("Failed to decrypt your security key. Your recovery code may be incorrect or your stored data is corrupt. Please log out and try again.");
+            logout();
+            return false;
+        } finally {
+            sessionStorage.removeItem('temp_recovery_code');
         }
     }
 
     function logout() {
         localStorage.clear();
-        window.location.href = '/login';
+        sessionStorage.clear();
+        window.location.href = 'login.html';
     }
 
     // --- UI Rendering ---
@@ -81,8 +97,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             const response = await fetchWithAuth('/api/messages/users');
             if (response.ok) {
-                const users = await response.json();
-                renderUserList(convList, users, "No other users found.");
+                renderUserList(convList, await response.json(), "No other users found.");
             }
         } catch (error) {
             console.error('Failed to load all users:', error);
@@ -93,8 +108,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             const response = await fetchWithAuth('/api/contacts/');
             if (response.ok) {
-                const contacts = await response.json();
-                renderUserList(contactsListContainer, contacts, "Your contact list is empty.");
+                renderUserList(contactsListContainer, await response.json(), "Your contact list is empty. Add a contact using their ID.");
             }
         } catch (error) {
             console.error('Failed to load contacts:', error);
@@ -118,17 +132,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contact_id: contactId }),
             });
-
             if (response.ok) {
                 contactIdInput.value = '';
-                await loadContacts(); // Refresh the contact list
+                await loadContacts();
             } else {
                 const errorData = await response.json();
                 addContactError.textContent = errorData.detail || 'Failed to add contact.';
             }
         } catch (error) {
             addContactError.textContent = 'An unexpected error occurred.';
-            console.error('Add contact error:', error);
         }
     });
 
@@ -146,6 +158,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     // --- Messaging Functions ---
     async function selectUser(user) {
         selectedUser = user;
+        noConvoSelected.style.display = 'none';
+        convHeader.style.display = 'flex';
         peerNameElem.textContent = user.username;
         peerAvatarElem.src = user.profile_picture_path || DEFAULT_AVATAR;
         peerAvatarElem.onerror = () => { peerAvatarElem.src = DEFAULT_AVATAR; };
@@ -192,19 +206,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function loadMessages() {
         if (!selectedUser) return;
         try {
-            const response = await fetchWithAuth('/api/messages/messages');
+            const response = await fetchWithAuth(`/api/messages?sender_id=${selectedUser.id}`); // Assuming API can filter
             if (response.ok) {
                 const messages = await response.json();
                 msgsContainer.innerHTML = '';
                 for (const msg of messages) {
-                    if (msg.sender_id === selectedUser.id) {
-                        try {
-                            const decryptedContent = await decryptMessage(privateKey, msg.encrypted_content);
-                            displayMessage(decryptedContent, 'received');
-                        } catch (e) {
-                            displayMessage("[Could not decrypt message]", 'received error');
-                        }
-                    }
+                    const isOwnMessage = msg.sender_id === currentUser.id; // This needs current user's ID
+                    const decryptedContent = await decryptMessage(privateKey, msg.encrypted_content);
+                    displayMessage(decryptedContent, isOwnMessage ? 'sent' : 'received');
                 }
             }
         } catch (error) {
@@ -224,8 +233,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     msgInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendMessage());
 
     // --- Initial Load ---
-    await loadPrivateKey();
-    await loadAllUsers(); // For the "Chats" tab
-    await loadContacts(); // For the "Contacts" tab
-    setInterval(loadMessages, 5000);
+    const keyLoaded = await loadAndDecryptPrivateKey();
+    if (keyLoaded) {
+        await loadAllUsers();
+        await loadContacts();
+        //setInterval(loadMessages, 5000); // Polling for messages
+    }
 });
