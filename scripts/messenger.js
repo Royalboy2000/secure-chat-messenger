@@ -39,6 +39,20 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     async function loadAndDecryptPrivateKey() {
+        // 1. Check if the decrypted key is already in sessionStorage for this session
+        const storedJwk = sessionStorage.getItem('decrypted_private_key_jwk');
+        if (storedJwk) {
+            try {
+                privateKey = await importPrivateKeyJwk(JSON.parse(storedJwk));
+                return true;
+            } catch (e) {
+                console.error("Failed to import stored JWK. Clearing session.", e);
+                logout();
+                return false;
+            }
+        }
+
+        // 2. If not, try to decrypt it using the one-time recovery code
         const recoveryCode = sessionStorage.getItem('temp_recovery_code');
         const encryptedKeyB64 = localStorage.getItem(`encrypted_private_key_${currentUser}`);
 
@@ -51,6 +65,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             const privateKeyJwk = await decryptPrivateKey(encryptedKeyB64, recoveryCode);
             privateKey = await importPrivateKeyJwk(privateKeyJwk);
+
+            // 3. Store the decrypted key in sessionStorage for this session
+            sessionStorage.setItem('decrypted_private_key_jwk', JSON.stringify(privateKeyJwk));
+
             return true;
         } catch (error) {
             console.error("Failed to decrypt private key:", error);
@@ -58,6 +76,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             logout();
             return false;
         } finally {
+            // 4. CRITICAL: Always clear the recovery code from session storage after use.
             sessionStorage.removeItem('temp_recovery_code');
         }
     }
