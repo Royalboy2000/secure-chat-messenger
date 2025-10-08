@@ -5,6 +5,7 @@ cryptography
 python-jose[cryptography]
 passlib
 argon2-cffi
+python-magic
 python-multipart
 jinja2
 aiofiles
