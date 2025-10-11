@@ -43,8 +43,19 @@ def send_message(
     )
 
 
-@router.get("/messages", response_model=List[Message])
-def get_messages(
-    db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)
+@router.get("/conversation/{peer_username}", response_model=List[Message])
+def get_conversation_history(
+    peer_username: str,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
 ):
-    return crud.get_messages_for_user(db=db, user_id=current_user.id)
+    """
+    Fetches the full conversation history between the current user and a peer.
+    """
+    peer = crud.get_user_by_username(db, username=peer_username)
+    if not peer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation peer not found.",
+        )
+    return crud.get_conversation(db=db, user1_id=current_user.id, user2_id=peer.id)

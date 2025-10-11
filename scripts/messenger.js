@@ -216,13 +216,21 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function loadMessages() {
         if (!selectedUser) return;
         try {
-            const response = await fetchWithAuth(`/api/messages?sender_id=${selectedUser.id}`);
+            const response = await fetchWithAuth(`/api/messages/conversation/${selectedUser.username}`);
             if (response.ok) {
                 const messages = await response.json();
-                msgsContainer.innerHTML = '';
+                msgsContainer.innerHTML = ''; // Clear previous messages
                 for (const msg of messages) {
-                    const decryptedContent = await decryptMessage(privateKey, msg.encrypted_content);
-                    displayMessage(decryptedContent, 'received');
+                    // Determine if the message was sent by the current user or the peer
+                    const messageType = msg.sender_id === selectedUser.id ? 'received' : 'sent';
+                    try {
+                        const decryptedContent = await decryptMessage(privateKey, msg.encrypted_content);
+                        displayMessage(decryptedContent, messageType);
+                    } catch (e) {
+                        console.error("Failed to decrypt a message:", e);
+                        // Display an error for the specific message that failed
+                        displayMessage("[Could not decrypt message]", messageType + " error");
+                    }
                 }
             }
         } catch (error) {

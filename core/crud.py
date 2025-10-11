@@ -49,8 +49,16 @@ def create_message(db: Session, sender_id: int, recipient_id: int, encrypted_con
     return db_message
 
 
-def get_messages_for_user(db: Session, user_id: int):
-    return db.query(Message).filter(Message.recipient_id == user_id).all()
+from sqlalchemy import or_
+
+def get_conversation(db: Session, user1_id: int, user2_id: int):
+    """Fetches all messages exchanged between two users."""
+    return db.query(Message).filter(
+        or_(
+            (Message.sender_id == user1_id) & (Message.recipient_id == user2_id),
+            (Message.sender_id == user2_id) & (Message.recipient_id == user1_id)
+        )
+    ).order_by(Message.id).all()
 
 def add_contact(db: Session, current_user: User, target_contact_id: str) -> User:
     """Adds a user to the current user's contact list."""
